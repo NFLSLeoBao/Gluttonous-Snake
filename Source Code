@@ -1,0 +1,287 @@
+#include<bits/stdc++.h>
+#include<windows.h>
+#include<stdlib.h>
+#include<conio.h>
+#define MAX_HIGH 70 //MAX: 56
+#define MAX_WIDTH 310
+#define MAX_SNAKE_LENGTH 21700
+using namespace std;
+int mp[MAX_WIDTH][MAX_HIGH],premp[MAX_WIDTH][MAX_HIGH],hi,wid,spd;
+//0表示空，1表示食物，2、4为蛇头，3、5为蛇身 ，6，8... 
+int ply_num,fd_num,food_x[1000],food_y[1000],born_x[2],born_y[2];
+char op;
+struct players{
+	int x[MAX_SNAKE_LENGTH],y[MAX_SNAKE_LENGTH];
+	int lens=1,prehead,pretail,lv;//上一次在这次的上为1，下为2，左为3，右为4 
+} ply[2];//ply[0] VS ply[1] 
+bool flag,alive_1=true,alive_2=true,eat,s;
+
+int color(string col);
+void gotoxy(int x,int y);
+void init();
+void print();
+void generate(int p);
+void input();
+void ed();
+
+void gotoxy(int x,int y){
+	COORD pos={x,y};
+	HANDLE hOut=GetStdHandle(STD_OUTPUT_HANDLE);
+	SetConsoleCursorPosition(hOut,pos);
+}
+void init(){
+	system("mode con cols=110 lines=55");
+	memset(mp,0,sizeof(mp));
+	for(int i=1;i<=fd_num;i++){
+		food_x[i]=rand()%(hi-3)+1;
+		food_y[i]=rand()%(wid-3)+1;
+		mp[food_x[i]][food_y[i]]=1;
+	}op=0;
+	memset(ply[0].x,0,sizeof(ply[0].x));
+	memset(ply[0].y,0,sizeof(ply[0].y));
+	ply[0].lens=1; ply[0].prehead=0; ply[0].pretail=0;
+	memset(ply[1].x,0,sizeof(ply[1].x));
+	memset(ply[1].y,0,sizeof(ply[1].y));
+	ply[1].lens=1; ply[1].prehead=0; ply[1].pretail=0;
+	ply[0].x[0]=hi/2; ply[0].y[0]=wid/2;
+	mp[hi/2][wid/2]=2;
+	if(ply_num==2){
+		ply[0].x[0]=hi/3; ply[0].y[0]=wid/3;
+		ply[1].x[0]=hi/3*2; ply[1].y[0]=wid/3*2;
+		mp[hi/3][wid/3]=2;
+		mp[hi/3*2][wid/3*2]=4;
+		mp[hi/2][wid/2]=0;
+	}flag=false; alive_1=true; alive_2=true; eat=false; s=false;
+}
+int color(string col){
+	HANDLE hout=GetStdHandle(STD_OUTPUT_HANDLE);
+    if(col=="red"){
+    	SetConsoleTextAttribute(hout,FOREGROUND_INTENSITY|FOREGROUND_RED);
+	}else if(col=="yellow"){
+	    SetConsoleTextAttribute(hout,FOREGROUND_INTENSITY|FOREGROUND_RED|FOREGROUND_GREEN);
+	}else if(col=="blue"){
+		SetConsoleTextAttribute(hout,FOREGROUND_INTENSITY|FOREGROUND_BLUE);
+	}else if(col=="green"){
+		SetConsoleTextAttribute(hout,FOREGROUND_INTENSITY|FOREGROUND_GREEN);
+	}else if(col=="purple"){
+		SetConsoleTextAttribute(hout,FOREGROUND_INTENSITY|FOREGROUND_RED|FOREGROUND_BLUE);
+	}else if(col=="white"){
+		SetConsoleTextAttribute(hout,FOREGROUND_INTENSITY|FOREGROUND_RED|FOREGROUND_BLUE|FOREGROUND_GREEN);
+	}
+}
+void print(){
+	if(!s){
+		gotoxy(0,0);
+		color("white");
+		for(int i=0;i<=wid;i++) printf(" 0");
+		printf("\n");
+		for(int i=0;i<hi;i++){
+			color("white");
+			printf("0");
+			for(int j=0;j<wid;j++){
+				if(mp[i][j]==0) printf(" ");
+				if(mp[i][j]==1){
+					color("yellow");
+					printf("*");
+				}if(mp[i][j]==2){
+					color("red");
+					printf("@");
+				}if(mp[i][j]==4){
+					color("blue");
+					printf("@");
+				}if(mp[i][j]==3){
+					color("red");
+					printf("+");
+				}if(mp[i][j]==5){
+					color("blue");
+					printf("+");
+				}color("white"); printf(" ");
+			}color("white"); printf("0\n");
+		}color("white");
+		for(int i=0;i<=wid+1;i++) printf("0 ");
+		printf("\n\nPlayer 1：%d              \n",ply[0].lens);
+		if(ply_num==2) printf("Player 2：%d              \n",ply[1].lens);
+	}
+	if(s){
+		for(int i=0;i<hi;i++){
+			for(int j=0;j<wid;j++){
+				if(premp[i][j]!=mp[i][j]){
+					gotoxy(j*2+1,i+1);
+					if(mp[i][j]==0){
+						printf(" ");
+					}if(mp[i][j]==1){
+						color("yellow");
+						printf("*");
+					}if(mp[i][j]==2){
+						color("red");
+						printf("@");
+					}if(mp[i][j]==4){
+						color("blue");
+						printf("@");
+					}if(mp[i][j]==3){
+						color("red");
+						printf("+");
+					}if(mp[i][j]==5){
+						color("blue");
+						printf("+");
+					}
+				}premp[i][j]=mp[i][j];
+			}
+		}gotoxy(0,hi+3); color("white");
+		printf("Player 1：%d              \n",ply[0].lens);
+		if(ply_num==2) printf("Player 2：%d              \n",ply[1].lens);
+		gotoxy(0,0);
+	}
+}
+void generate(int p){
+	for(int i=1;i<=fd_num;i++){
+		if(food_x[i]-ply[p].x[0]==1 || food_x[i]==ply[p].x[0] || ply[p].x[0]-food_x[i]==1){
+			if(food_y[i]-ply[p].y[0]==1 || food_y[i]==ply[p].y[0] || ply[p].y[0]-food_y[i]==1){
+				ply[p].lens++; mp[food_x[i]][food_y[i]]=0;
+ 	    		food_x[i]=rand()%(hi-3)+1;
+				food_y[i]=rand()%(wid-3)+1;
+ 	    		mp[food_x[i]][food_y[i]]=1;
+ 	    		flag=true; break;
+			}
+		}
+	}if(p==0){
+		for(int i=0;i<ply[1].lens;i++){
+			if(ply[0].x[0]==ply[1].x[i] && ply[0].y[0]==ply[1].y[i]) alive_1=false;
+		}if(!alive_1) ed();
+	}if(p==1){
+		for(int i=0;i<ply[0].lens;i++){
+			if(ply[1].x[0]==ply[0].x[i] && ply[1].y[0]==ply[0].y[i]) alive_2=false;
+		}if(!alive_2) ed();
+	}if(ply[p].x[0]>=hi || ply[p].x[0]<0 || ply[p].y[0]>=wid || ply[p].y[0]<0){
+	 	if(p==0){
+	 		alive_1=false; ed();
+		}if(p==1){
+	 		alive_2=false; ed();
+		}
+	}else{
+		for(int i=ply[p].lens;i>0;i--){
+			ply[p].x[i]=ply[p].x[i-1];
+			ply[p].y[i]=ply[p].y[i-1];
+		}if(ply[p].prehead==1) ply[p].x[0]--;
+		if(ply[p].prehead==2) ply[p].x[0]++;
+		if(ply[p].prehead==3) ply[p].y[0]++;
+		if(ply[p].prehead==4) ply[p].y[0]--;
+		mp[ply[p].x[0]][ply[p].y[0]]=2*p+2;
+		mp[ply[p].x[1]][ply[p].y[1]]=2*p+3;
+		mp[ply[p].x[ply[p].lens]][ply[p].y[ply[p].lens]]=0;
+	}
+}
+void input(){
+	op=0;
+	if(kbhit()){
+		s=true; op=getch();
+		if(op=='s') ply[0].prehead=2;
+		if(op=='a') ply[0].prehead=4;
+		if(op=='w') ply[0].prehead=1;
+		if(op=='d') ply[0].prehead=3;
+		if(op==80) ply[1].prehead=2;
+		if(op==75) ply[1].prehead=4;
+		if(op==72) ply[1].prehead=1;
+		if(op==77) ply[1].prehead=3;
+	}
+}
+void ed(){
+	system("mode con cols=59 lines=29"); system("cls");
+	if(ply_num==1){
+		printf("----------------------------------------------------------\n");
+		printf("|                        YOU LOSE!                        |\n");
+		printf("----------------------------------------------------------");
+		printf("\n\n\nScore:%d",ply[0].lens);
+		printf("\n\n\nPress '1' to exit. Press '2' to play again.");
+		printf("\n\n\n         You can give me some 水动乐 to update to\n");
+		printf("            the latest version , which include\n");
+		printf("           AI system and history & rank system.\n\n");
+		op=getch();
+		if(op=='1') exit(1);
+		if(op=='2'){ init(); return; }
+	}if(ply_num==2){
+		printf("----------------------------------------------------------\n");
+		printf("|");color("red");printf("                      PLAYER");
+		if(alive_1) printf(" 1 WIN!                      ");
+		if(alive_2) printf(" 2 WIN!                      ");
+		color("white");
+		printf("|\n----------------------------------------------------------");
+		printf("\n\n\nScore: Player1: %d\n       Player2: %d",ply[0].lens,ply[1].lens);
+		printf("\n\n\nPress '1' to exit. Press '2' to play again.");
+		printf("\n\n\nPress '1' to exit. Press '2' to play again.");
+		printf("\n\n\n         You can give me some 水动乐 to update to\n");
+		printf("            the latest version , which include\n");
+		printf("           AI system and history & rank system.\n\n");
+		op=getch();
+		if(op=='1') exit(1);
+		if(op=='2'){ init(); return; }
+	}
+}
+int main(){
+	SetConsoleTitle("Aconsdle_V1.1");
+	system("mode con cols=61 lines=30");
+	color("white"); cout<<"\n-----------------------------------------------------------\n|      ";
+	color("purple"); cout<<"=====";
+	color("red"); cout<<"+++++";
+	color("yellow"); cout<<"WELCOME TO GLUTTONOUS SNAKE";
+	color("red"); cout<<"+++++";
+	color("purple"); cout<<"=====";
+	color("white"); cout<<"      |\n-----------------------------------------------------------\n\n";
+	printf("                  Press any button to start");
+	printf("\n\n\n\n\n\n\n\n\n\n\n\n\n          This game is made by LeoBao 20210501 鲍睿\n"); 
+	printf("\n             版权所有 侵权必究 仅供学习 严禁外传\n\n"); 
+	printf("          Thanks 20210503 for giving me good ideas\n\n");
+	printf("        Thanks 20210502 for helping me test this game\n\n");
+	printf("   Tips: 最佳配置为High 45 ,Width 45 ,Speed 70 ,Food 40 !\n\n\n");
+	op=getch();op=0;
+	system("mode con cols=40 lines=25");
+	printf("----------------------------------------\n|");
+	color("red"); printf("                Adjust              ");
+	color("white"); printf("|\n----------------------------------------\n");
+	printf("High:"); scanf("%d",&hi);
+	printf("\nWidth:"); scanf("%d",&wid);
+	printf("\nSpeed:"); scanf("%d",&spd);
+	printf("\nFood:"); scanf("%d",&fd_num);
+	printf("\nNumber of players:"); scanf("%d",&ply_num);
+	system("mode con cols=52 lines=30");
+	printf("                      Loading..."); gotoxy(0,5);
+	printf(" Tips: If there's something wrong with your game ,\n                 restart this game.");
+	printf("\n\n      The higher the 'Speed', the lower the speed."); gotoxy(0,2);
+	for(int i=1;i<=51;i++){
+	    	printf("_");
+	    	Sleep(50);
+	    	if(i>=45) Sleep(200);
+	}Sleep(500);
+	for(int i=1;i<=fd_num;i++){
+		food_x[i]=rand()%(hi-3)+1;
+		food_y[i]=rand()%(wid-3)+1;
+		mp[food_x[i]][food_y[i]]=1;
+	}ply[0].x[0]=hi/2; ply[0].y[0]=wid/2; mp[hi/2][wid/2]=2;
+	if(ply_num==2){
+		ply[0].x[0]=hi/3; ply[0].y[0]=wid/3;
+		ply[1].x[0]=hi/3*2; ply[1].y[0]=wid/3*2;
+		mp[hi/3][wid/3]=2; mp[hi/3*2][wid/3*2]=4; mp[hi/2][wid/2]=0;
+	}for(int i=0;i<ply_num;i++){
+		born_x[i]=ply[i].x[0]; born_y[i]=ply[i].y[0];
+	}system("mode con cols=110 lines=55");
+	for(int i=0;i<hi;i++){
+		for(int j=0;j<wid;j++){
+			premp[i][j]=mp[i][j];
+		}
+	}while(true){
+		input(); print(); Sleep(spd); input();
+		if(ply_num>=1){ generate(0); input(); }
+		if(ply_num==2){ generate(1); input(); }
+		for(int i=0;i<hi;i++){
+			for(int j=0;j<wid;j++){
+				mp[i][j]=0;
+			}
+		}for(int i=1;i<=fd_num;i++){
+			mp[food_x[i]][food_y[i]]=1;
+		}for(int i=0;i<ply_num;i++){
+			for(int j=0;j<ply[i].lens;j++){
+				mp[ply[i].x[j]][ply[i].y[j]]=2*i+3;
+			}mp[ply[i].x[0]][ply[i].y[0]]--;
+		}
+	}return 0;
+}
