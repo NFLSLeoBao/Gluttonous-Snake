@@ -287,12 +287,12 @@ void rob_generate(int p){
 						if(rob[i].y[j]-rob[p].y[0]==1 || rob[i].y[j]==rob[p].y[0] || rob[p].y[0]-rob[i].y[j]==1){
 							if(!rob[i].df[j]){
 								rob[p].lens++; mp[rob[i].x[j]][rob[i].y[j]]=0;
-								rob[i].df[j]=true; flag=true; break;
+								rob[i].df[j]=true; break;
 							}
 						}
 					}
-				}if(flag) break;
-			}flag=false;
+				}
+			}
 		}rob_fway(p);
 		memset(rob[p].ob,0,sizeof(rob[p].ob)); rob[p].prehead=0;//机器人避障模块
 		if(mp[rob[p].x[0]+1][rob[p].y[0]]!=0 && mp[rob[p].x[0]+1][rob[p].y[0]]!=1) rob[p].ob[2]=true;
